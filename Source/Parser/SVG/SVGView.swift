@@ -9,10 +9,19 @@ import SwiftUI
 
 public struct SVGView: View {
 
-    public let svg: SVGNode?
+    @State public var svg: SVGNode?
 
     public init(contentsOf url: URL) {
-        self.svg = SVGParser.parse(contentsOf: url)
+        asyncLoad(url)
+    }
+
+    private func asyncLoad(_ url: URL) {
+        Task {
+            let intermediateSVG = SVGParser.parse(contentsOf: url)
+            await MainActor.run {
+                self.svg = intermediateSVG
+            }
+        }
     }
 
     @available(*, deprecated, message: "Use (contentsOf:) initializer instead")

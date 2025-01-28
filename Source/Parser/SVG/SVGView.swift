@@ -9,43 +9,72 @@ import SwiftUI
 
 public struct SVGView: View {
 
-    public let svg: SVGNode?
+    @State private var svg: SVGNode? = nil
+    private let url: URL?
+    private let data: Data?
+    private let string: String?
+    private let stream: InputStream?
 
     public init(contentsOf url: URL) {
-        self.svg = SVGParser.parse(contentsOf: url)
-    }
-
-    @available(*, deprecated, message: "Use (contentsOf:) initializer instead")
-    public init(fileURL: URL) {
-        self.svg = SVGParser.parse(contentsOf: fileURL)
+        self.url = url
+        self.data = nil
+        self.string = nil
+        self.stream = nil
     }
 
     public init(data: Data) {
-        self.svg = SVGParser.parse(data: data)
+        self.url = nil
+        self.data = data
+        self.string = nil
+        self.stream = nil
     }
 
     public init(string: String) {
-        self.svg = SVGParser.parse(string: string)
+        self.url = nil
+        self.data = nil
+        self.string = string
+        self.stream = nil
     }
 
     public init(stream: InputStream) {
-        self.svg = SVGParser.parse(stream: stream)
-    }
-
-    public init(xml: XMLElement) {
-        self.svg = SVGParser.parse(xml: xml)
-    }
-
-    public init(svg: SVGNode) {
-        self.svg = svg
-    }
-
-    public func getNode(byId id: String) -> SVGNode? {
-        return svg?.getNode(byId: id)
+        self.url = nil
+        self.data = nil
+        self.string = nil
+        self.stream = stream
     }
 
     public var body: some View {
-        svg?.toSwiftUI()
+        Group {
+            if let svg = svg {
+                svg.toSwiftUI()
+            } else {
+                ProgressView() // Show a loading indicator while parsing
+            }
+        }
+        .onAppear {
+            loadSVG()
+        }
     }
 
+    private func loadSVG() {
+        DispatchQueue.global(qos: .background).async {
+            let parsedSVG: SVGNode?
+            if let url = url {
+                parsedSVG = SVGParser.parse(contentsOf: url)
+            } else if let data = data {
+                parsedSVG = SVGParser.parse(data: data)
+            } else if let string = string {
+                parsedSVG = SVGParser.parse(string: string)
+            } else if let stream = stream {
+                parsedSVG = SVGParser.parse(stream: stream)
+            } else {
+                parsedSVG = nil
+            }
+
+            // Update the state on the main thread
+            DispatchQueue.main.async {
+                self.svg = parsedSVG
+            }
+        }
+    }
 }
